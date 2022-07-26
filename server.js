@@ -1,7 +1,7 @@
 //Declare Variables
 const express = require("express");
 const app = express();
-const PORT = 8500;
+const PORT = process.env.PORT || 8080;
 const mongoose = require("mongoose");
 const TodoTask = require("./models/toDoTask");
 require("dotenv").config();
