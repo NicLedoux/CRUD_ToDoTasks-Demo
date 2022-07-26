@@ -41,7 +41,7 @@ app.post("/", async (req, res) => {
   }
 });
 
-//EDIT
+//EDIT OR UPDATE
 app
   .route("/edit/:id")
   .get((req, res) => {
@@ -58,13 +58,21 @@ app
         title: req.body.title,
         content: req.body.content,
       },
-
       (err) => {
         if (err) return res.status(500).send(err);
         res.redirect("/");
       }
     );
   });
+
+//DELETE
+app.route("/remove/:id").get((req, res) => {
+  const id = req.params.id;
+  TodoTask.findByIdAndRemove(id, (err) => {
+    if (err) return res.status(500).send(err);
+    res.redirect("/");
+  });
+});
 
 //Start Server
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
