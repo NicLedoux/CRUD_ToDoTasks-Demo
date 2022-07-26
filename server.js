@@ -3,7 +3,7 @@ const express = require("express");
 const app = express();
 const PORT = 8500;
 const mongoose = require("mongoose");
-const TodoTask = require("./models/todotask"); //Does case matter? does .js matter?
+const TodoTask = require("./models/todotask");
 require("dotenv").config();
 //Set Middleware
 app.set("view engine", "ejs");
