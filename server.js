@@ -1,79 +1,183 @@
-//MODULES
+// path: server.js
 const express = require("express");
-const app = express();
-const PORT = process.env.PORT || 8080;
 const mongoose = require("mongoose");
-const TodoTask = require("./models/toDoTask");
-require("dotenv").config();
+const dotenv = require("dotenv");
+dotenv.config();
 
-//Set Middleware
+const TodoTask = require("./models/toDoTask");
+
+const app = express();
+const HOST = "0.0.0.0";                 // ensure Fly can reach it
+const PORT = Number(process.env.PORT) || 8080;
+
+// Middleware & view engine
 app.set("view engine", "ejs");
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 
-//Connect to Mongo
-mongoose.connect(process.env.DB_CONNECTION, { useNewUrlParser: true }, () => {
-  console.log("Connected to db!");
-});
-// GET METHOD
-app.get("/", async (req, res) => {
-  try {
-    TodoTask.find({}, (err, tasks) => {
-      res.render("index.ejs", { todoTasks: tasks });
-    });
-  } catch (err) {
-    if (err) return res.status(500).send(err);
-  }
+// Health endpoints
+app.get("/healthz", (_req, res) => res.status(200).send("ok")); // WHY: keep health check DB-independent
+app.get("/readyz", (_req, res) => {
+  const state = mongoose.connection.readyState; // 0=disc,1=conn,2=conn'.,3=disc'
+  res.status(state === 1 ? 200 : 503).json({ dbState: state });
 });
 
-//POST METHOD
-app.post("/", async (req, res) => {
-  const todoTask = new TodoTask({
-    title: req.body.title,
-    content: req.body.content,
+// Routes
+app.get("/", (_req, res) => {
+  TodoTask.find({}, (err, tasks) => {
+    if (err) return res.status(500).send("Database error.");
+    res.render("index.ejs", { todoTasks: tasks || [] });
   });
+});
+
+app.post("/", async (req, res) => {
   try {
+    const todoTask = new TodoTask({
+      title: req.body.title,
+      content: req.body.content,
+    });
     await todoTask.save();
-    console.log(todoTask);
     res.redirect("/");
-  } catch (err) {
-    if (err) return res.status(500).send(err);
-    res.redirect("/");
+  } catch {
+    res.status(500).send("Failed to save.");
   }
 });
 
-//EDIT OR UPDATE
 app
   .route("/edit/:id")
   .get((req, res) => {
     const id = req.params.id;
     TodoTask.find({}, (err, tasks) => {
-      res.render("edit.ejs", { todoTasks: tasks, idTask: id });
+      if (err) return res.status(500).send("Database error.");
+      res.render("edit.ejs", { todoTasks: tasks || [], idTask: id });
     });
   })
   .post((req, res) => {
-    const id = req.params.id;
     TodoTask.findByIdAndUpdate(
-      id,
-      {
-        title: req.body.title,
-        content: req.body.content,
-      },
-      (err) => {
-        if (err) return res.status(500).send(err);
-        res.redirect("/");
-      }
+      req.params.id,
+      { title: req.body.title, content: req.body.content },
+      (err) => (err ? res.status(500).send("Update failed.") : res.redirect("/"))
     );
   });
 
-//DELETE
-app.route("/remove/:id").get((req, res) => {
-  const id = req.params.id;
-  TodoTask.findByIdAndRemove(id, (err) => {
-    if (err) return res.status(500).send(err);
-    res.redirect("/");
-  });
+app.get("/remove/:id", (req, res) => {
+  TodoTask.findByIdAndRemove(req.params.id, (err) =>
+    err ? res.status(500).send("Delete failed.") : res.redirect("/")
+  );
 });
 
-//Start Server
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Startup
+async function start() {
+  const uri = process.env.DB_CONNECTION;
+  if (uri) {
+    try {
+      await mongoose.connect(uri); // mongoose v6+ sane defaults
+      console.log("Connected to MongoDB");
+    } catch (e) {
+      console.error("MongoDB connection failed:", e.message); // keep serving /healthz
+    }
+  } else {
+    console.warn("WARN: DB_CONNECTION not set; starting without Mongo.");
+  }
+
+  const server = app.listen(PORT, HOST, () =>
+    console.log(`Server listening on http://${HOST}:${PORT}`)
+  );
+
+  // Graceful shutdown
+  const shutdown = () => {
+    console.log("Shutting down...");
+    server.close(() => {
+      mongoose.connection.close(false, () => process.exit(0));
+    });
+    setTimeout(() => process.exit(1), 8000).unref(); // WHY: avoid hanging forever
+  };
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+}
+start();
+
+module.exports = app;
+
+
+
+
+// //MODULES
+// const express = require("express");
+// const app = express();
+// const PORT = process.env.PORT || 8080;
+// const mongoose = require("mongoose");
+// const TodoTask = require("./models/toDoTask");
+// require("dotenv").config();
+
+// //Set Middleware
+// app.set("view engine", "ejs");
+// app.use(express.static("public"));
+// app.use(express.urlencoded({ extended: true }));
+
+// //Connect to Mongo
+// mongoose.connect(process.env.DB_CONNECTION, { useNewUrlParser: true }, () => {
+//   console.log("Connected to db!");
+// });
+// // GET METHOD
+// app.get("/", async (req, res) => {
+//   try {
+//     TodoTask.find({}, (err, tasks) => {
+//       res.render("index.ejs", { todoTasks: tasks });
+//     });
+//   } catch (err) {
+//     if (err) return res.status(500).send(err);
+//   }
+// });
+
+// //POST METHOD
+// app.post("/", async (req, res) => {
+//   const todoTask = new TodoTask({
+//     title: req.body.title,
+//     content: req.body.content,
+//   });
+//   try {
+//     await todoTask.save();
+//     console.log(todoTask);
+//     res.redirect("/");
+//   } catch (err) {
+//     if (err) return res.status(500).send(err);
+//     res.redirect("/");
+//   }
+// });
+
+// //EDIT OR UPDATE
+// app
+//   .route("/edit/:id")
+//   .get((req, res) => {
+//     const id = req.params.id;
+//     TodoTask.find({}, (err, tasks) => {
+//       res.render("edit.ejs", { todoTasks: tasks, idTask: id });
+//     });
+//   })
+//   .post((req, res) => {
+//     const id = req.params.id;
+//     TodoTask.findByIdAndUpdate(
+//       id,
+//       {
+//         title: req.body.title,
+//         content: req.body.content,
+//       },
+//       (err) => {
+//         if (err) return res.status(500).send(err);
+//         res.redirect("/");
+//       }
+//     );
+//   });
+
+// //DELETE
+// app.route("/remove/:id").get((req, res) => {
+//   const id = req.params.id;
+//   TodoTask.findByIdAndRemove(id, (err) => {
+//     if (err) return res.status(500).send(err);
+//     res.redirect("/");
+//   });
+// });
+
+// //Start Server
+// app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
