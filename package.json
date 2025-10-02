@@ -1,16 +1,14 @@
+// path: package.json
 {
   "name": "full-stack-crud-app",
   "version": "1.0.0",
-  "description": "",
+  "private": true,
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon server.js"
+    "dev": "nodemon server.js",          // local development only
+    "start": "node server.js"            // production on Fly
   },
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "cjs": "^0.0.11",
     "dotenv": "^16.0.1",
     "ejs": "^3.1.8",
     "express": "^4.18.1",
@@ -20,3 +18,28 @@
     "nodemon": "^2.0.19"
   }
 }
+
+
+
+// {
+//   "name": "full-stack-crud-app",
+//   "version": "1.0.0",
+//   "description": "",
+//   "main": "server.js",
+//   "scripts": {
+//     "test": "echo \"Error: no test specified\" && exit 1",
+//     "start": "nodemon server.js"
+//   },
+//   "author": "",
+//   "license": "ISC",
+//   "dependencies": {
+//     "cjs": "^0.0.11",
+//     "dotenv": "^16.0.1",
+//     "ejs": "^3.1.8",
+//     "express": "^4.18.1",
+//     "mongoose": "^6.4.5"
+//   },
+//   "devDependencies": {
+//     "nodemon": "^2.0.19"
+//   }
+// }
