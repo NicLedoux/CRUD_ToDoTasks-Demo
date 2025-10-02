@@ -4,8 +4,8 @@
   "private": true,
   "main": "server.js",
   "scripts": {
-    "dev": "nodemon server.js",          // local development only
-    "start": "node server.js"            // production on Fly
+    "dev": "nodemon server.js",
+    "start": "node server.js"
   },
   "dependencies": {
     "dotenv": "^16.0.1",
